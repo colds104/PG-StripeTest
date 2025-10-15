@@ -1,0 +1,85 @@
+#payment-form {
+    width: 30vw;
+    min-width: 500px;
+    align-self: center;    
+    margin: 20px;
+}
+
+#payment-form .form-field {
+    margin-bottom: 15px;
+    position: relative;
+}
+
+#payment-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+#payment-form input,
+#payment-form select,
+#payment-form button {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    box-sizing: border-box;
+}
+
+#payment-form .form-inline {
+    display: flex;
+    gap: 10px;
+}
+
+    #payment-form .form-inline .form-field {
+        flex: 1;
+    }
+
+#payment-form .error {
+    border-color: red;
+    color: red;
+}
+
+#payment-form .error-message {
+    color: red;
+    font-size: 12px;
+    margin-top: 5px;
+    position: relative;
+    white-space: nowrap;
+}
+
+#payment-form button {
+    background-color: #3B73FF;
+    color: white;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    display: inline-block;
+}
+
+    #payment-form button.loading {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+#payment-form .spinner {
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 4px solid white;
+    width: 18px;
+    height: 18px;
+    animation: spin 1s linear infinite;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+@keyframes spin {
+    0% {
+        transform: translate(-50%, -50%) rotate(0deg);
+    }
+
+    100% {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}

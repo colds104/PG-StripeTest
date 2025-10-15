@@ -1,0 +1,190 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>결제 페이지</title>
+
+    <link href="~/stripe/NH_MasterCard.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div id="payment-form">
+
+        <div class="form-field">
+            <label for="card-number">카드 번호</label>
+            <input type="text" id="card-number" placeholder="1234 1234 1234 1234" required maxlength="19">
+            <div class="error-message" id="card-number-error"></div>
+        </div>
+
+        <div class="form-inline">
+            <div class="form-field">
+                <label for="exp-date">만료 날짜</label>
+                <input type="text" id="exp-date" placeholder="MM / YY" required maxlength="7">
+                <div class="error-message" id="exp-date-error"></div>
+            </div>
+            <div class="form-field">
+                <label for="cvc">보안 코드</label>
+                <input type="text" id="cvc" placeholder="CVC" required maxlength="4">
+                <div class="error-message" id="cvc-error"></div>
+            </div>
+        </div>
+
+        <button type="button" id="submit-button" onclick="submitPayment()">
+            결제하기
+            <div class="spinner" id="spinner" style="display: none;"></div>
+        </button>
+
+        <div id="payment-message" style="display:none; margin-top: 20px; color: green;"></div>
+
+    </div>
+
+    <script type="text/javascript">
+
+        function submitPayment() {
+            // 카드 번호 체크 - 추후 농협마스터 카드번호 체크 로직 추가 필요
+            console.log('card-number : ' + $('#card-number').val());
+
+            // 에러 메시지 초기화
+            $('.error-message').text('');
+            $('input').removeClass('error');
+
+            // 입력 필드 값 확인
+            var isValid = true;
+            var cardNumber = $('#card-number').val().trim();
+            var expDate = $('#exp-date').val().trim();
+            var cvc = $('#cvc').val().trim();
+
+            // 카드 번호 검증
+            if (cardNumber.length !== 18) {
+                $('#card-number-error').text('카드 번호를 입력하세요.');
+                $('#card-number').addClass('error');
+                isValid = false;
+            }
+
+            // 만료 날짜 형식 검증 (MM / YY)
+            if (!/^\d{2} \/ \d{2}$/.test(expDate)) {
+                $('#exp-date-error').text('카드 만료 날짜를 입력하세요.');
+                $('#exp-date').addClass('error');
+                isValid = false;
+            }
+
+            // CVC 검증
+            if (cvc.length < 3) {
+                $('#cvc-error').text('카드 보안 코드를 입력하세요.');
+                $('#cvc').addClass('error');
+                isValid = false;
+            }
+
+            // 모든 필드가 유효할 때만 결제 처리
+            if (isValid) {
+                // 로딩 표시
+                $('#submit-button').addClass('loading');
+                $('#spinner').show();
+                $('#submit-button').prop('disabled', true);
+
+                var expParts = expDate.split(' / ');
+                var expMonth = expParts[0];
+                var expYear = expParts[1];
+
+                // 1. CreateToken API 호출
+                $.ajax({
+                    url: '/PaymentIntentApi/CreateToken', // CreateToken API 엔드포인트
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        CardNumber: cardNumber.replace(/\s+/g, ''), // 카드번호의 공백 제거
+                        ExpMonth: expMonth,
+                        ExpYear: expYear,
+                        Cvc: cvc
+                    }),
+                    success: function (response) {
+                        // 2. CreateToken 성공 시 ProcessCharge API 호출
+                        $.ajax({
+                            url: '/PaymentIntentApi/ProcessCharge', // Charge API 엔드포인트
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({
+                                Token: response.token, // CreateToken에서 받은 Token 사용
+                                Amount: 5000, // 금액 (센트 단위)
+                                Currency: 'usd',
+                                ReceiptEmail: 'colds104@naver.com', 
+                                CardNumber: cardNumber.replace(/\s/g, '-'),
+                                Description: 'Example charge',
+                                Metadata: {
+                                    'OrderId': '6735',
+                                    'OrderId2': '6736'
+                                }
+                            }),
+                            success: function (chargeResponse) {
+                                // chargeResponse를 보기 좋게 출력
+                                console.log('Charge response:', JSON.stringify(chargeResponse, null, 2));
+
+                                $('#payment-message').css('color', 'green').text('결제가 성공적으로 처리되었습니다!').show();
+                                // 로딩 표시 제거
+                                $('#submit-button').removeClass('loading');
+                                $('#spinner').hide();
+                                $('#submit-button').prop('disabled', false);
+                            },
+                            error: function (xhr) {
+                                $('#payment-message').css('color', 'red').text('결제 실패 : ' + xhr.responseJSON.error).show();
+                                // 로딩 표시 제거
+                                $('#submit-button').removeClass('loading');
+                                $('#spinner').hide();
+                                $('#submit-button').prop('disabled', false);
+                            }
+                        });
+                    },
+                    error: function (xhr) {
+                        $('#payment-message').css('color', 'red').text('카드 토큰 생성 실패 : ' + xhr.responseJSON.error).show();
+                        // 로딩 표시 제거
+                        $('#submit-button').removeClass('loading');
+                        $('#spinner').hide();
+                        $('#submit-button').prop('disabled', false);
+                    }
+                });
+            }
+        }
+
+        $(document).ready(function () {
+
+            // 카드 번호 포맷팅
+            $('#card-number').on('input', function () {
+                var cardNumber = $(this).val().replace(/\D/g, ''); // 모든 비숫자 문자를 제거
+                if (cardNumber.length > 16) {
+                    cardNumber = cardNumber.substring(0, 16);
+                }
+                var formattedCardNumber = cardNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
+                $(this).val(formattedCardNumber);
+            });
+
+            // 만료 날짜 포맷팅
+            $('#exp-date').on('input', function () {
+                var expDate = $(this).val().replace(/\D/g, ''); // 모든 비숫자 문자를 제거
+
+                if (expDate.length > 4) {
+                    expDate = expDate.substring(0, 4); // MMYY 형식으로 제한
+                }
+
+                if (expDate.length >= 3) {
+                    expDate = expDate.replace(/(\d{2})(\d{1,2})/, '$1 / $2'); // MM / YY 형식으로 변환
+                }
+
+                $(this).val(expDate);
+            });
+
+            // 보안 코드 (CVC) 포맷팅
+            $('#cvc').on('input', function () {
+                var cvc = $(this).val().replace(/\D/g, ''); // 모든 비숫자 문자를 제거
+                if (cvc.length > 4) {
+                    cvc = cvc.substring(0, 4); // 최대 4자리 숫자까지 허용
+                }
+                $(this).val(cvc);
+            });
+
+        });
+
+    </script>
+
+</body>
+</html>

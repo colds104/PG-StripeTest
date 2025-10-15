@@ -1,0 +1,32 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<link href="~/stripe/checkout.css" rel="stylesheet" />
+<script src="https://js.stripe.com/v3/"></script>
+<script src="~/stripe/checkout.js"></script>
+
+<!-- Display a payment form -->
+<form id="payment-form">
+    <div id="payment-element">
+        <!--Stripe.js injects the Payment Element-->
+    </div>
+    <button id="submit">
+        <div class="spinner hidden" id="spinner"></div>
+        <span id="button-text">결제하기</span>
+    </button>
+    <div id="payment-message" class="hidden"></div>
+</form>
+
+<script type="text/javascript">
+    $(function () {
+        initialize();
+        checkStatus();
+
+        document
+            .querySelector("#payment-form")
+            .addEventListener("submit", handleSubmit);
+    });
+
+</script>
+
